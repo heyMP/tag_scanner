@@ -1,0 +1,349 @@
+<?php
+
+/**
+ * Implements hook_menu().
+ */
+function tag_scanner_menu() {
+  $items['admin/content/tag-scanner'] = array(
+    'title' => 'Tag scanner',
+    'page callback' => 'tag_scanner_page_callback',
+    'access arguments' => array('access tag scanner'),
+    'type' => MENU_NORMAL_ITEM,
+  );
+
+  $items['admin/content/tag-scanner/export'] = array(
+    'title' => 'Tag scanner Export',
+    'page callback' => 'tag_scanner_export_page_callback',
+    'access arguments' => array('access tag scanner'),
+    'type' => MENU_NORMAL_ITEM,
+  );
+
+  return $items;
+}
+
+/**
+ * Implements hook_permission().
+ */
+function tag_scanner_permission() {
+  return array(
+    'access tag scanner' =>  array(
+      'title' => t('Access tag scanner'),
+      'description' => t('Perform an tag scan on all nodes and export that information.'),
+    ),
+  );
+}
+
+function tag_scanner_page_callback() {
+	$output = '';
+
+	// get search options
+	$search_options_form = drupal_get_form('tag_scanner_search_options');
+	$output .= render($search_options_form);
+
+	// get results
+	$table = _tag_scanner_scan_init();
+	if ($table && !empty($table)) {
+		$output .= 'Results ' . count($table['rows']) . ' tags found. ' . l('Download Table', 'admin/content/tag-scanner/export');
+		$output .= theme('table', $table);
+		return $output;
+	}
+	else {
+		$output .= 'No tags found';
+		return $output;
+	}
+}
+
+function tag_scanner_export_page_callback($fields = 'body') {
+	$table = _tag_scanner_scan_init();
+
+	if ($table && !empty($table)) {
+		// move the rows up one level
+		$table = array_merge($table, $table['rows']);
+		unset($table['rows']);
+		tag_scanner_convert_to_csv($table, 'tag_scanner_export.csv', ',');
+	}
+	else {
+		return 'No tags found.';
+	}
+}
+
+/**
+ * drupal_get_form callback for Search Options
+ */
+function tag_scanner_search_options($form, &$form_state) {
+	$field_map = field_info_field_map();
+	$entities = array();
+	$bundles = array();
+	$fields = array();
+	// get a list of all available bundles and fields
+	if ($field_map && !empty($field_map)) {
+		$fields = array_keys($field_map);
+		foreach ($field_map as $field) {
+			if (isset($field['bundles'])) {
+				foreach ($field['bundles'] as $entity_type => $bundles) {				
+					$entities[] = $entity_type;
+					foreach ($bundles as $bundle) {
+						$bundles[] = $bundle;
+					}
+				}
+			}
+		}
+	}
+
+	// make sure there are no duplicates and format the array
+	// so that the keys and values are the same
+	$entities = array_unique($entities);
+	$entities = array_combine($entities, $entities);
+	$fields = array_unique($fields);
+	$fields = array_combine($fields, $fields);
+	$bundles = array_unique($bundles);
+	$bundles = array_combine($bundles, $bundles);
+
+	// get user settings
+	$settings = _tag_scanner_get_settings();
+
+	$form['tag'] = array(
+	  '#type' => 'textfield',
+	  '#title' => t('Tag'),
+	  '#size' => 60,
+	  '#required' => TRUE,
+	  '#description' => t('Enter the tag that should be search on.'),
+	  '#default_value' => $settings['default_tag'],
+	);
+	$form['options'] = array(
+	  '#type' => 'fieldset', 
+	  '#title' => t('Search options'), 
+	  '#collapsible' => TRUE,
+	  '#collapsed' => TRUE,
+	);
+	$form['options']['entities'] = array(
+		'#type' => 'radios',
+		'#options' => $entities,
+		'#title' => 'Entities',
+		'#required' => TRUE,
+		'#default_value' => $settings['default_entities'],
+	);
+	$form['options']['bundles'] = array(
+		'#type' => 'checkboxes',
+		'#options' => $bundles,
+		'#title' => 'Bundles',
+		'#default_value' => $settings['default_bundles'],
+	);
+	$form['options']['fields'] = array(
+		'#type' => 'checkboxes',
+		'#options' => $fields,
+		'#title' => 'Fields',
+		'#default_value' => $settings['default_fields'],
+	);
+	$form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Update'),
+  );
+
+	return $form;
+}
+
+function tag_scanner_search_options_submit($form, &$form_state) {
+	if (isset($form_state['values']['tag'])) {
+		$_SESSION['scanner_tags_tag'] = $form_state['values']['tag'];
+	}
+	if (isset($form_state['values']['entities'])) {
+		$_SESSION['scanner_tags_entities'] = serialize($form_state['values']['entities']);
+	}
+	if (isset($form_state['values']['bundles'])) {
+		$_SESSION['scanner_tags_bundles'] = serialize($form_state['values']['bundles']);
+	}
+	if (isset($form_state['values']['fields'])) {
+		$_SESSION['scanner_tags_fields'] = serialize($form_state['values']['fields']);
+	}
+}
+
+/**
+ * Helper function to get a list of settings from _SESSION
+ */
+function _tag_scanner_get_settings() {
+	// get defaults
+	$settings['default_tag'] = '';
+	$settings['default_entities'] = array();
+	$settings['default_bundles'] = array();
+	$settings['default_fields'] = array();
+
+	if (isset($_SESSION['scanner_tags_tag'])) {
+		$settings['default_tag'] = $_SESSION['scanner_tags_tag'];
+	}
+	if (isset($_SESSION['scanner_tags_entities'])) {
+		$settings['default_entities'] = unserialize($_SESSION['scanner_tags_entities']);
+	}
+	if (isset($_SESSION['scanner_tags_bundles'])) {
+		$settings['default_bundles'] = unserialize($_SESSION['scanner_tags_bundles']);
+	}
+	if (isset($_SESSION['scanner_tags_fields'])) {
+		$settings['default_fields'] = unserialize($_SESSION['scanner_tags_fields']);
+	}
+
+	return $settings;
+}
+
+function _tag_scanner_scan_init() {
+	$settings = _tag_scanner_get_settings();
+	$tag = $settings['default_tag'];
+	$entity = $settings['default_entities'];
+	$options['bundles'] = $settings['default_bundles'];
+	$options['fields'] = $settings['default_fields'];
+
+	return _tag_scanner_scan_tags($settings['default_tag'], $settings['default_entities'], $options);
+}
+
+/**
+ * Helper function to search fields for a specified tag and return
+ * an table of results.
+ * @param  [string] $tag      Tag that you want to search on
+ * @param  [string] $entity   entity that you would like to search on
+ * @param  [array]  $options
+ *         				   - [bundles]
+ *         				   - [fields]
+ * @return [array]  An array, prepared to be run through theme_field()
+ */
+function _tag_scanner_scan_tags($tag, $entity_type, $options) {
+	// remove all 'off' checkboxes
+	$options = _tag_scanner_array_filter_recursive($options, "_tag_scanner_filter_options");
+	$query = new EntityFieldQuery();
+	$query->entityCondition('entity_type', $entity_type);
+  if (isset($options['fields'])) {
+	  foreach ($options['fields'] as $field) {
+	  	$query->fieldCondition($field, 'value', 'NULL', '!=');
+	  }
+	}
+  try {
+  	$result = $query->execute();
+  } 
+  catch (Exception $exc) {
+    watchdog(
+      'tag_scanner',
+      'EntityFieldQuery exception in %function() <pre>@trace</pre>',
+      array('%function' => __FUNCTION__, '@trace' => $exc->getTraceAsString()),
+      WATCHDOG_ERROR
+    );
+  }
+
+	if (isset($result[$entity_type])) {
+		$tags_list = array();
+	  $entity_ids = array_keys($result[$entity_type]);
+
+	  foreach ($entity_ids as $entity_id) {
+	  	$entity_wrapper = entity_metadata_wrapper($entity_type, $entity_id);
+	  	foreach ($options['fields'] as $field) {
+	  		if (isset($entity_wrapper->$field->value)) {
+	  			$html = $entity_wrapper->$field->value->value();
+
+	  			// set up a new DOMDocument
+	  			$dom = new DOMDocument();
+	  			// use the @ symbol to supress invalid html warnings
+	  			@$dom->loadHTML($html);
+	  			$elements = $dom->getElementsByTagName($tag);
+
+	  			// loop through each tag
+	  			for ($i = 0; $i < $elements->length; $i++) {
+	  				$element = $elements->item($i);
+	  				$attr_length = $element->attributes->length;
+
+	  				// gather a list of attributes for this tag
+	  				$tmp_attributes = array();
+	  				$tmp_attributes['#id'] = $entity_wrapper->getIdentifier();
+	  				foreach ($element->attributes as $key => $value) {
+	  					$tmp_attributes[$value->name] = $value->value;
+	  				}
+	  				// add this tag to the list
+	  				$tags_list[] = $tmp_attributes;
+	  			}
+	  		}
+	  	}
+	  }
+
+	  // put the table together
+	  $table = array();
+	  // find all attritubute types
+	  $attribute_types = array();
+	  foreach ($tags_list as $element) {
+	  	$attributes = array_keys($element);
+	  	if (!empty($attributes)) {
+	  		foreach ($attributes as $attribute) {
+	  			if (!in_array($attribute, $attribute_types)) {
+	  				$attribute_types[] = $attribute;
+	  			}
+	  		}
+	  	}
+	  }
+
+	  // now that we have the full list of attribute types
+	  // we can start putting together the rows. Need to make
+	  // sure the all rows have the same number of attributes and
+	  // in the same order.
+	  $rows = array();
+	  foreach ($tags_list as $element_key => $element) {
+	  	foreach ($attribute_types as $attribute) {
+	  		if (isset($element[$attribute])) {
+	  			$attribute_value = $element[$attribute];
+	  		}
+	  		else {
+	  			$attribute_value = '';
+	  		}
+	  		$rows[$element_key][$attribute] = $attribute_value;
+	  	}
+	  }
+
+	  $table = array(
+	  	'header' => $attribute_types,
+	  	'rows' => $rows,
+	  );
+
+	  return $table;
+	}
+
+	return false;
+}
+
+function tag_scanner_convert_to_csv($input_array, $output_file_name, $delimiter)
+{
+    /** open raw memory as file, no need for temp files, be careful not to run out of memory thought */
+    $f = fopen('php://memory', 'w');
+    /** loop through array  */
+    foreach ($input_array as $line) {
+        /** default php csv handler **/
+        fputcsv($f, $line, $delimiter);
+    }
+    /** rewrind the "file" with the csv lines **/
+    fseek($f, 0);
+    /** modify header to be downloadable csv file **/
+    header('Content-Type: application/csv');
+    header('Content-Disposition: attachement; filename="' . $output_file_name . '";');
+    /** Send file to browser for download */
+    fpassthru($f);
+}
+
+/**
+ * Recursively filter an array
+ *
+ * @param array $array
+ * @param callable $callback
+ *
+ * @return array
+ */
+function _tag_scanner_array_filter_recursive( array $array, callable $callback = null ) {
+	$array = is_callable( $callback ) ? array_filter( $array, $callback ) : array_filter( $array );
+	foreach ( $array as &$value ) {
+		if ( is_array( $value ) ) {
+			$value = call_user_func( __FUNCTION__, $value, $callback );
+		}
+	}
+
+	return $array;
+}
+
+/**
+ * Array Filter for removing off checkboxes.
+ */
+function _tag_scanner_filter_options($var) {
+	return ($var !== NULL && $var !== FALSE && $var !== '' && $var !== 0);
+}
+
