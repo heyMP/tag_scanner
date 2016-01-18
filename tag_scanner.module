@@ -4,33 +4,33 @@
  * Implements hook_menu().
  */
 function tag_scanner_menu() {
-  $items['admin/content/tag-scanner'] = array(
-    'title' => 'Tag scanner',
-    'page callback' => 'tag_scanner_page_callback',
-    'access arguments' => array('access tag scanner'),
-    'type' => MENU_NORMAL_ITEM,
-  );
+	$items['admin/content/tag-scanner'] = array(
+		'title' => 'Tag scanner',
+		'page callback' => 'tag_scanner_page_callback',
+		'access arguments' => array('access tag scanner'),
+		'type' => MENU_NORMAL_ITEM,
+		);
 
-  $items['admin/content/tag-scanner/export'] = array(
-    'title' => 'Tag scanner Export',
-    'page callback' => 'tag_scanner_export_page_callback',
-    'access arguments' => array('access tag scanner'),
-    'type' => MENU_NORMAL_ITEM,
-  );
+	$items['admin/content/tag-scanner/export'] = array(
+		'title' => 'Tag scanner Export',
+		'page callback' => 'tag_scanner_export_page_callback',
+		'access arguments' => array('access tag scanner'),
+		'type' => MENU_NORMAL_ITEM,
+		);
 
-  return $items;
+	return $items;
 }
 
 /**
  * Implements hook_permission().
  */
 function tag_scanner_permission() {
-  return array(
-    'access tag scanner' =>  array(
-      'title' => t('Access tag scanner'),
-      'description' => t('Perform an tag scan on all nodes and export that information.'),
-    ),
-  );
+	return array(
+		'access tag scanner' =>  array(
+			'title' => t('Access tag scanner'),
+			'description' => t('Perform an tag scan on all nodes and export that information.'),
+			),
+		);
 }
 
 function tag_scanner_page_callback() {
@@ -77,19 +77,19 @@ function tag_scanner_search_options($form, &$form_state) {
 	$settings = unserialize($_SESSION['tag_scanner_settings']);
 
 	$form['tag'] = array(
-	  '#type' => 'textfield',
-	  '#title' => t('Tag'),
-	  '#size' => 60,
-	  '#required' => TRUE,
-	  '#description' => t('Enter the tag that should be search on.'),
-	  '#default_value' => $settings['tag'],
-	);
+		'#type' => 'textfield',
+		'#title' => t('Tag'),
+		'#size' => 60,
+		'#required' => TRUE,
+		'#description' => t('Enter the tag that should be search on.'),
+		'#default_value' => $settings['tag'],
+		);
 	$form['options'] = array(
-	  '#type' => 'fieldset', 
-	  '#title' => t('Search options'), 
-	  '#collapsible' => TRUE,
-	  '#collapsed' => FALSE,
-	);
+		'#type' => 'fieldset', 
+		'#title' => t('Search options'), 
+		'#collapsible' => TRUE,
+		'#collapsed' => FALSE,
+		);
 
 	// get a list of all available bundles and fields
 	if ($field_map && !empty($field_map)) {
@@ -108,10 +108,10 @@ function tag_scanner_search_options($form, &$form_state) {
 						$form['options']['bundles'][$entity_type]['#options'][$bundle] = $bundle;
 						$form['options']['bundles'][$entity_type]['#default_value'] = $settings['bundles'][$entity_type];
 						$form['options']['bundles'][$entity_type]['#states'] = array(
-					    'visible' => array(
-					      ':input[name="entities"]' => array('value' => $entity_type),
-					    ),
-					  );
+							'visible' => array(
+								':input[name="entities"]' => array('value' => $entity_type),
+								),
+							);
 						// create a field list
 						$form['options']['fields']['#tree'] = TRUE;
 						$form['options']['fields'][$entity_type][$bundle]['#type'] = 'checkboxes';
@@ -119,11 +119,11 @@ function tag_scanner_search_options($form, &$form_state) {
 						$form['options']['fields'][$entity_type][$bundle]['#options'][$field_name] = $field_name;
 						$form['options']['fields'][$entity_type][$bundle]['#default_value'] = $settings['fields'][$entity_type][$bundle];
 						$form['options']['fields'][$entity_type][$bundle]['#states'] = array(
-					    'visible' => array(
-					    	':input[name="entities"]' => array('value' => $entity_type),
-				        ':input[name="bundles['.$entity_type.']['.$bundle.']"]' => array('checked' => TRUE),
-				      ),
-					  );
+							'visible' => array(
+								':input[name="entities"]' => array('value' => $entity_type),
+								':input[name="bundles['.$entity_type.']['.$bundle.']"]' => array('checked' => TRUE),
+								),
+							);
 					}
 				}
 			}
@@ -131,9 +131,9 @@ function tag_scanner_search_options($form, &$form_state) {
 	}
 
 	$form['submit'] = array(
-    '#type' => 'submit',
-    '#value' => t('Update'),
-  );
+		'#type' => 'submit',
+		'#value' => t('Update'),
+		);
 
 	return $form;
 }
@@ -174,93 +174,93 @@ function _tag_scanner_scan_init() {
 function _tag_scanner_scan_tags($tag, $entity_type, $settings) {
 	$query = new EntityFieldQuery();
 	$query->entityCondition('entity_type', $entity_type);
-  if (isset($settings['bundles'][$entity_type])) {
-	  foreach ($settings['bundles'][$entity_type] as $bundle_type => $value) {
+	if (isset($settings['bundles'][$entity_type])) {
+		foreach ($settings['bundles'][$entity_type] as $bundle_type => $value) {
 	  	// Add each selected bundle to the query
-	  	if ($value != "0" || $value != FALSE) {
-	  		$query->entityCondition('bundle', $bundle_type);
-	  	}
+			if ($value != "0" || $value != FALSE) {
+				$query->entityCondition('bundle', $bundle_type);
+			}
 	  	// Add each selected field to the query
-  	  if (isset($settings['fields'][$entity_type][$bundle_type])) {
-  		  foreach ($settings['fields'][$entity_type][$bundle_type] as $field_name => $value) {
-  		  	if ($value != "0" || $value != FALSE) {
-  		  		$query->fieldCondition($field_name, 'value', 'NULL', '!=');
-  		  	}
-  		  }
-  		}
-	  }
+			if (isset($settings['fields'][$entity_type][$bundle_type])) {
+				foreach ($settings['fields'][$entity_type][$bundle_type] as $field_name => $value) {
+					if ($value != "0" || $value != FALSE) {
+						$query->fieldCondition($field_name, 'value', 'NULL', '!=');
+					}
+				}
+			}
+		}
 	}
-  try {
-  	$result = $query->execute();
-  } 
-  catch (Exception $exc) {
-    watchdog(
-      'tag_scanner',
-      'EntityFieldQuery exception in %function() <pre>@trace</pre>',
-      array('%function' => __FUNCTION__, '@trace' => $exc->getTraceAsString()),
-      WATCHDOG_ERROR
-    );
-  }
+	try {
+		$result = $query->execute();
+	} 
+	catch (Exception $exc) {
+		watchdog(
+			'tag_scanner',
+			'EntityFieldQuery exception in %function() <pre>@trace</pre>',
+			array('%function' => __FUNCTION__, '@trace' => $exc->getTraceAsString()),
+			WATCHDOG_ERROR
+			);
+	}
 
 	if (isset($result[$entity_type])) {
 		$tags_list = array();
 
-	  foreach ($result[$entity_type] as $entity_id => $entity) {
-	  	$entity_wrapper = entity_metadata_wrapper($entity_type, $entity_id);
-	  	$bundle_type = $entity->type;
+		foreach ($result[$entity_type] as $entity_id => $entity) {
+			$entity_wrapper = entity_metadata_wrapper($entity_type, $entity_id);
+			$bundle_type = $entity->type;
 
-	  	foreach ($settings['fields'][$entity_type][$bundle_type] as $field) {
-	  		if ($field != "0" || $field != FALSE) {
-	  			if (isset($entity_wrapper->$field->value)) {
-	  				$html = $entity_wrapper->$field->value->value();
-	  				$tags = _tag_scanner_get_tags_from_html($html, $tag);
-	  				foreach ($tags as $key => $value) {
-	  					$value['#id'] = $entity_wrapper->getIdentifier();
-	  					$tags_list[] = $value;
-	  				}
-	  			}
-	  		}
-	  	}
-	  }
+			foreach ($settings['fields'][$entity_type][$bundle_type] as $field) {
+				if ($field != "0" || $field != FALSE) {
+					if (isset($entity_wrapper->$field->value)) {
+						$html = $entity_wrapper->$field->value->value();
+						$tags = _tag_scanner_get_tags_from_html($html, $tag);
+						foreach ($tags as $key => $value) {
+							$value['#id'] = $entity_wrapper->getIdentifier();
+							$tags_list[] = $value;
+						}
+					}
+				}
+			}
+		}
 
 	  // put the table together
-	  $table = array();
+		$table = array();
 	  // find all attritubute types
-	  $attribute_types = array();
-	  foreach ($tags_list as $element) {
-	  	$attributes = array_keys($element);
-	  	if (!empty($attributes)) {
-	  		foreach ($attributes as $attribute) {
-	  			if (!in_array($attribute, $attribute_types)) {
-	  				$attribute_types[] = $attribute;
-	  			}
-	  		}
-	  	}
-	  }
+		$attribute_types = array();
+		foreach ($tags_list as $element) {
+			$attributes = array_keys($element);
+			if (!empty($attributes)) {
+				foreach ($attributes as $attribute) {
+					if (!in_array($attribute, $attribute_types)) {
+						$attribute_types[] = $attribute;
+					}
+				}
+			}
+		}
 
 	  // now that we have the full list of attribute types
 	  // we can start putting together the rows. Need to make
 	  // sure the all rows have the same number of attributes and
 	  // in the same order.
-	  $rows = array();
-	  foreach ($tags_list as $element_key => $element) {
-	  	foreach ($attribute_types as $attribute) {
-	  		if (isset($element[$attribute])) {
-	  			$attribute_value = $element[$attribute];
-	  		}
-	  		else {
-	  			$attribute_value = '';
-	  		}
-	  		$rows[$element_key][$attribute] = $attribute_value;
-	  	}
-	  }
+		$rows = array();
+		foreach ($tags_list as $element_key => $element) {
+			foreach ($attribute_types as $attribute) {
+				if (isset($element[$attribute])) {
+					$attribute_value = $element[$attribute];
+				}
+				else {
+					$attribute_value = '';
+				}
+				$rows[$element_key][$attribute] = $attribute_value;
+			}
+		}
 
-	  $table = array(
-	  	'header' => $attribute_types,
-	  	'rows' => $rows,
-	  );
+		$table = array(
+			'header' => $attribute_types,
+			'rows' => $rows,
+			);
 
-	  return $table;
+		return $table;
 	}
 
 	return false;
@@ -298,20 +298,20 @@ function _tag_scanner_get_tags_from_html($html, $tag_name) {
 }
 
 function _tag_scanner_convert_to_csv($input_array, $output_file_name, $delimiter) {
-  /** open raw memory as file, no need for temp files, be careful not to run out of memory thought */
-  $f = fopen('php://memory', 'w');
-  /** loop through array  */
-  foreach ($input_array as $line) {
-      /** default php csv handler **/
-      fputcsv($f, $line, $delimiter);
-  }
-  /** rewrind the "file" with the csv lines **/
-  fseek($f, 0);
-  /** modify header to be downloadable csv file **/
-  header('Content-Type: application/csv');
-  header('Content-Disposition: attachement; filename="' . $output_file_name . '";');
-  /** Send file to browser for download */
-  fpassthru($f);
+	/** open raw memory as file, no need for temp files, be careful not to run out of memory thought */
+	$f = fopen('php://memory', 'w');
+	/** loop through array  */
+	foreach ($input_array as $line) {
+		/** default php csv handler **/
+		fputcsv($f, $line, $delimiter);
+	}
+	/** rewrind the "file" with the csv lines **/
+	fseek($f, 0);
+	/** modify header to be downloadable csv file **/
+	header('Content-Type: application/csv');
+	header('Content-Disposition: attachement; filename="' . $output_file_name . '";');
+	/** Send file to browser for download */
+	fpassthru($f);
 }
 
 /**
