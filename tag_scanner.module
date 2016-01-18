@@ -223,8 +223,6 @@ function _tag_scanner_scan_tags($tag, $entity_type, $settings) {
 	  	}
 	  }
 
-	  krumo($tags_list);
-
 	  // put the table together
 	  $table = array();
 	  // find all attritubute types
