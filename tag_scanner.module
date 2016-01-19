@@ -40,15 +40,22 @@ function tag_scanner_page_callback() {
 	$search_options_form = drupal_get_form('tag_scanner_search_options');
 	$output .= render($search_options_form);
 
-	// get results
-	$table = _tag_scanner_scan_init();
-	if ($table && !empty($table)) {
-		$output .= 'Results ' . count($table['rows']) . ' tags found. ' . l('Download Table', 'admin/content/tag-scanner/export');
-		$output .= theme('table', $table);
-		return $output;
+
+	if (isset($_SESSION['tag_scanner_settings'])) {
+		// get results
+		$table = _tag_scanner_scan_init();
+		if ($table && !empty($table)) {
+			$output .= 'Results ' . count($table['rows']) . ' tags found. ' . l('Download Table', 'admin/content/tag-scanner/export');
+			$output .= theme('table', $table);
+			return $output;
+		}
+		else {
+			$output .= 'No tags found';
+			return $output;
+		}		
 	}
 	else {
-		$output .= 'No tags found';
+		$output .= t('Enter in search criteria in the above settings fieldset.');
 		return $output;
 	}
 }
@@ -74,7 +81,12 @@ function tag_scanner_search_options($form, &$form_state) {
 	// get the list of possible search options
 	$field_map = field_info_field_map();
 	// get user settings
-	$settings = unserialize($_SESSION['tag_scanner_settings']);
+	if (isset($_SESSION['tag_scanner_settings'])) {
+		$settings = unserialize($_SESSION['tag_scanner_settings']);
+	}
+	else {
+		$settings = NULL;
+	}
 
 	$form['tag'] = array(
 		'#type' => 'textfield',
@@ -100,13 +112,13 @@ function tag_scanner_search_options($form, &$form_state) {
 					$form['options']['entities']['#type'] = 'radios';
 					$form['options']['entities']['#title'] = 'Entity';
 					$form['options']['entities']['#options'][$entity_type] = $entity_type;
-					$form['options']['entities']['#default_value'] = $settings['entities'];
+					$form['options']['entities']['#default_value'] = ($settings ? $settings['entities'] : NULL);
 					foreach ($bundles as $bundle) {
 						$form['options']['bundles']['#tree'] = TRUE;
 						$form['options']['bundles'][$entity_type]['#type'] = 'checkboxes';
 						$form['options']['bundles'][$entity_type]['#title'] = $entity_type .' bundles';
 						$form['options']['bundles'][$entity_type]['#options'][$bundle] = $bundle;
-						$form['options']['bundles'][$entity_type]['#default_value'] = $settings['bundles'][$entity_type];
+						$form['options']['bundles'][$entity_type]['#default_value'] = ($settings ? $settings['bundles'][$entity_type] : array());
 						$form['options']['bundles'][$entity_type]['#states'] = array(
 							'visible' => array(
 								':input[name="entities"]' => array('value' => $entity_type),
@@ -117,7 +129,7 @@ function tag_scanner_search_options($form, &$form_state) {
 						$form['options']['fields'][$entity_type][$bundle]['#type'] = 'checkboxes';
 						$form['options']['fields'][$entity_type][$bundle]['#title'] = $bundle .' fields';
 						$form['options']['fields'][$entity_type][$bundle]['#options'][$field_name] = $field_name;
-						$form['options']['fields'][$entity_type][$bundle]['#default_value'] = $settings['fields'][$entity_type][$bundle];
+						$form['options']['fields'][$entity_type][$bundle]['#default_value'] = ($settings ? $settings['fields'][$entity_type][$bundle] : array());
 						$form['options']['fields'][$entity_type][$bundle]['#states'] = array(
 							'visible' => array(
 								':input[name="entities"]' => array('value' => $entity_type),
@@ -217,6 +229,7 @@ function _tag_scanner_scan_tags($tag, $entity_type, $settings) {
 						foreach ($tags as $key => $value) {
 							$value = array('#tag' => $tag) + $value;
 							$value = array('#entity_id' => $entity_wrapper->getIdentifier()) + $value;
+							$value = array('#entity_title' => $entity_wrapper->title->value()) + $value;
 							$value = array('#bundle' => $bundle_type) + $value;
 							$value = array('#entity' => $entity_type) + $value;
 							$tags_list[] = $value;
