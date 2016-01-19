@@ -85,10 +85,10 @@ function tag_scanner_search_options($form, &$form_state) {
 		'#default_value' => $settings['tag'],
 		);
 	$form['options'] = array(
-		'#type' => 'fieldset', 
-		'#title' => t('Search options'), 
+		'#type' => 'fieldset',
+		'#title' => t('Search options'),
 		'#collapsible' => TRUE,
-		'#collapsed' => FALSE,
+		'#collapsed' => TRUE,
 		);
 
 	// get a list of all available bundles and fields
@@ -215,12 +215,19 @@ function _tag_scanner_scan_tags($tag, $entity_type, $settings) {
 						$html = $entity_wrapper->$field->value->value();
 						$tags = _tag_scanner_get_tags_from_html($html, $tag);
 						foreach ($tags as $key => $value) {
-							$value['#id'] = $entity_wrapper->getIdentifier();
+							$value = array('#tag' => $tag) + $value;
+							$value = array('#entity_id' => $entity_wrapper->getIdentifier()) + $value;
+							$value = array('#bundle' => $bundle_type) + $value;
+							$value = array('#entity' => $entity_type) + $value;
 							$tags_list[] = $value;
 						}
 					}
 				}
 			}
+		}
+
+		foreach ($tags_list as $key => $value) {
+			$tags_list[$key] = array('#item_id' => $key) + $value;
 		}
 
 	  // put the table together
