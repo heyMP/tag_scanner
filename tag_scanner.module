@@ -15,7 +15,7 @@ function tag_scanner_menu() {
 		'title' => 'Tag scanner Export',
 		'page callback' => 'tag_scanner_export_page_callback',
 		'access arguments' => array('access tag scanner'),
-		'type' => MENU_NORMAL_ITEM,
+		'type' => MENU_CALLBACK,
 		);
 
 	return $items;
@@ -52,7 +52,7 @@ function tag_scanner_page_callback() {
 		else {
 			$output .= 'No tags found';
 			return $output;
-		}		
+		}
 	}
 	else {
 		$output .= t('Enter in search criteria in the above settings fieldset.');
