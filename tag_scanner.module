@@ -343,25 +343,3 @@ function _tag_scanner_convert_to_csv($input_array, $output_file_name, $delimiter
 	/** Send file to browser for download */
 	fpassthru($f);
 }
-
-/**
- * Recursively filter an array
- */
-function _tag_scanner_array_filter_recursive( array $array, callable $callback = null ) {
-	$array = is_callable( $callback ) ? array_filter( $array, $callback ) : array_filter( $array );
-	foreach ( $array as &$value ) {
-		if ( is_array( $value ) ) {
-			$value = call_user_func( __FUNCTION__, $value, $callback );
-		}
-	}
-
-	return $array;
-}
-
-/**
- * Array Filter for removing off checkboxes.
- */
-function _tag_scanner_filter_options($var) {
-	return ($var !== NULL && $var !== FALSE && $var !== '' && $var !== 0);
-}
-
