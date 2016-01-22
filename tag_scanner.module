@@ -241,6 +241,10 @@ function _tag_scanner_scan_tags($tag, $entity_type, $settings) {
 			}
 		}
 
+		// remove any pure duplicates
+		$tags_list = _tag_scanner_array_unique_recursive($tags_list);
+
+		// add an identifiable key to the table
 		foreach ($tags_list as $key => $value) {
 			$tags_list[$key] = array('#item_id' => $key) + $value;
 		}
@@ -334,4 +338,23 @@ function _tag_scanner_convert_to_csv($input_array, $output_file_name, $delimiter
 	header('Content-Disposition: attachement; filename="' . $output_file_name . '";');
 	/** Send file to browser for download */
 	fpassthru($f);
+}
+
+/**
+ * Helper function to remove unique multidimensional arrays
+ * @param  [type] $array [description]
+ * @return [type]        [description]
+ */
+function _tag_scanner_array_unique_recursive($array) {
+  $result = array_map("unserialize", array_unique(array_map("serialize", $array)));
+
+  foreach ($result as $key => $value)
+  {
+    if ( is_array($value) )
+    {
+      $result[$key] = super_unique($value);
+    }
+  }
+
+  return $result;
 }
