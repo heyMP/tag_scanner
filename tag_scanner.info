@@ -1,4 +1,4 @@
 name = Tag Scanner
 description = Seek out all specified tags within the wysiwyg and return there attributes.
 core = 7.x
-package = Eberly
+dependencies[] = entity

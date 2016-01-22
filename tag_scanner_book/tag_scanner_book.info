@@ -1,0 +1,4 @@
+name = Tag Scanner Book
+description = Adds extra book information to the output of Tag Scanner module.
+core = 7.x
+dependencies[] = tag_scanner
